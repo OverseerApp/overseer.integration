@@ -18,5 +18,5 @@ public interface IFailureDetectionAnalyzer
   /// <summary>
   /// Analyzes the latest frame for failure detection.
   /// </summary>
-  JobFailureAnalysisResult Analyze();
+  FailureAnalysisResult Analyze();
 }
