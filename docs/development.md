@@ -33,6 +33,7 @@ public class MyAnalyzer : IFailureDetectionAnalyzer
 ```csharp
 // PluginConfiguration.cs
 using Microsoft.Extensions.DependencyInjection;
+using Overseer.Server.Integration;
 
 public class PluginConfiguration : IPluginConfiguration
 {
