@@ -39,7 +39,7 @@ jobs:
             Write-Host "Using provided version: $version"
           } else {
             # Read current version from csproj
-            [xml]$csproj = Get-Content "Overseer.Server.Integration/Overseer.Server.Integration.csproj"
+            [xml]$csproj = Get-Content "src/Overseer.Server.Integration/Overseer.Server.Integration.csproj"
             $currentVersion = $csproj.Project.PropertyGroup.Version
             
             if ($currentVersion) {
@@ -75,7 +75,7 @@ jobs:
         run: |
           $version = "${{ steps.version.outputs.VERSION }}"
           
-          [xml]$csproj = Get-Content "Overseer.Server.Integration/Overseer.Server.Integration.csproj"
+          [xml]$csproj = Get-Content "src/Overseer.Server.Integration/Overseer.Server.Integration.csproj"
           
           # Update or create Version element
           $propertyGroup = $csproj.Project.PropertyGroup
@@ -87,17 +87,17 @@ jobs:
             $propertyGroup.AppendChild($versionNode)
           }
           
-          $csproj.Save("Overseer.Server.Integration/Overseer.Server.Integration.csproj")
+          $csproj.Save("src/Overseer.Server.Integration/Overseer.Server.Integration.csproj")
           Write-Host "Updated csproj to version $version"
 
       - name: Restore dependencies
-        run: dotnet restore Overseer.Server.Integration/Overseer.Server.Integration.csproj
+        run: dotnet restore src/Overseer.Server.Integration/Overseer.Server.Integration.csproj
 
       - name: Build
-        run: dotnet build Overseer.Server.Integration/Overseer.Server.Integration.csproj --configuration Release --no-restore /p:Version=${{ steps.version.outputs.VERSION }}
+        run: dotnet build src/Overseer.Server.Integration/Overseer.Server.Integration.csproj --configuration Release --no-restore /p:Version=${{ steps.version.outputs.VERSION }}
 
       - name: Pack
-        run: dotnet pack Overseer.Server.Integration/Overseer.Server.Integration.csproj --configuration Release --no-build --output ./artifacts /p:PackageVersion=${{ steps.version.outputs.VERSION }}
+        run: dotnet pack src/Overseer.Server.Integration/Overseer.Server.Integration.csproj --configuration Release --no-build --output ./artifacts /p:PackageVersion=${{ steps.version.outputs.VERSION }}
 
       - name: Publish to NuGet.org
         run: dotnet nuget push ./artifacts/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source "https://api.nuget.org/v3/index.json" --skip-duplicate
@@ -107,7 +107,7 @@ jobs:
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git add Overseer.Server.Integration/Overseer.Server.Integration.csproj
+          git add src/Overseer.Server.Integration/Overseer.Server.Integration.csproj
           git diff --staged --quiet || git commit -m "chore: bump version to ${{ steps.version.outputs.VERSION }}"
           git push
 
