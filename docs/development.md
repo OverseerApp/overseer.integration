@@ -39,11 +39,11 @@ public class PluginConfiguration : IPluginConfiguration
 {
   public void ConfigureServices(IServiceCollection services)
   {
-    // Register the plugin implementation for the plugin interface
-    services.AddSingleton<IFailureDetectionAnalyzer, MyAnalyzer>();
-
     // Optionally register other dependencies required by your plugin
     // services.AddSingleton<IMyDependency, MyDependencyImplementation>();
+    
+    // Register the plugin implementation for the plugin interface
+    services.AddTransient<IFailureDetectionAnalyzer, MyAnalyzer>();    
   }
 }
 ```
