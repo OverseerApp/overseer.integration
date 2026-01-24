@@ -1,0 +1,132 @@
+name: Build and Publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g., 1.2.3). Leave empty to auto-increment patch version.'
+        required: false
+        type: string
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Determine version
+        id: version
+        shell: pwsh
+        run: |
+          $inputVersion = "${{ github.event.inputs.version }}"
+          
+          if ($inputVersion) {
+            $version = $inputVersion
+            Write-Host "Using provided version: $version"
+          } else {
+            # Read current version from csproj
+            [xml]$csproj = Get-Content "Overseer.Server.Integration/Overseer.Server.Integration.csproj"
+            $currentVersion = $csproj.Project.PropertyGroup.Version
+            
+            if ($currentVersion) {
+              Write-Host "Current version in csproj: $currentVersion"
+              
+              # Parse semantic version
+              if ($currentVersion -match '^(\d+)\.(\d+)\.(\d+)(.*)$') {
+                $major = [int]$matches[1]
+                $minor = [int]$matches[2]
+                $patch = [int]$matches[3]
+                $suffix = $matches[4]
+                
+                # Increment patch version
+                $patch++
+                $version = "$major.$minor.$patch$suffix"
+                Write-Host "Auto-incremented to: $version"
+              } else {
+                Write-Host "Could not parse version, using default 1.0.0"
+                $version = "1.0.0"
+              }
+            } else {
+              Write-Host "No version found in csproj, using default 1.0.0"
+              $version = "1.0.0"
+            }
+          }
+          
+          Write-Host "Final version: $version"
+          echo "VERSION=$version" >> $env:GITHUB_OUTPUT
+          echo "VERSION=$version" >> $env:GITHUB_ENV
+
+      - name: Update project version
+        shell: pwsh
+        run: |
+          $version = "${{ steps.version.outputs.VERSION }}"
+          
+          [xml]$csproj = Get-Content "Overseer.Server.Integration/Overseer.Server.Integration.csproj"
+          
+          # Update or create Version element
+          $propertyGroup = $csproj.Project.PropertyGroup
+          if ($propertyGroup.Version) {
+            $propertyGroup.Version = $version
+          } else {
+            $versionNode = $csproj.CreateElement("Version")
+            $versionNode.InnerText = $version
+            $propertyGroup.AppendChild($versionNode)
+          }
+          
+          $csproj.Save("Overseer.Server.Integration/Overseer.Server.Integration.csproj")
+          Write-Host "Updated csproj to version $version"
+
+      - name: Restore dependencies
+        run: dotnet restore Overseer.Server.Integration/Overseer.Server.Integration.csproj
+
+      - name: Build
+        run: dotnet build Overseer.Server.Integration/Overseer.Server.Integration.csproj --configuration Release --no-restore /p:Version=${{ steps.version.outputs.VERSION }}
+
+      - name: Pack
+        run: dotnet pack Overseer.Server.Integration/Overseer.Server.Integration.csproj --configuration Release --no-build --output ./artifacts /p:PackageVersion=${{ steps.version.outputs.VERSION }}
+
+      - name: Publish to GitHub Packages
+        run: dotnet nuget push ./artifacts/*.nupkg --api-key ${{ secrets.GITHUB_TOKEN }} --source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" --skip-duplicate
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Commit version update
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add Overseer.Server.Integration/Overseer.Server.Integration.csproj
+          git diff --staged --quiet || git commit -m "chore: bump version to ${{ steps.version.outputs.VERSION }}"
+          git push
+
+      - name: Create release
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ steps.version.outputs.VERSION }}
+          release_name: Release v${{ steps.version.outputs.VERSION }}
+          draft: false
+          prerelease: false
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-packages
+          path: ./artifacts/*.nupkg
