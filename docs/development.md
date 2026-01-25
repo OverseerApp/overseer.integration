@@ -7,6 +7,8 @@ This section describes how to create a plugin for Overseer. Currently there is o
 ### Goals
 
 - Keep plugin code isolated in a class library.
+- Your plugin should be in the Overseer namespace.
+  - This is so your assemblies are prefixed with "Overseer", E.g. "Overseer.Your.Plugin.Namespace.dll"
 - Implement `IPluginConfiguration` to configure and register your plugin's services.
 - Register your plugin's public plugin interfaces (for example, `IFailureDetectionAnalyzer`) and any supporting dependencies in `ConfigureServices`.
 
@@ -78,4 +80,4 @@ Design your `IPluginConfiguration` registrations to be generic — register impl
 
 ---
 
-If you need a template plugin or a reference implementation added to the repo, open an issue or create a PR and we can add a small sample project to `samples/`.
+If you need a reference implementation please view the [Overseer Print Guard](https://github.com/OverseerApp/overseer.print-guard) repository.
