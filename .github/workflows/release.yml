@@ -66,9 +66,14 @@ jobs:
             }
           }
           
+          # Detect if this is a prerelease version (contains - followed by prerelease identifiers)
+          $isPrerelease = $version -match '-(alpha|beta|rc|preview|pre)'
+          
           Write-Host "Final version: $version"
+          Write-Host "Is prerelease: $isPrerelease"
           echo "VERSION=$version" >> $env:GITHUB_OUTPUT
           echo "VERSION=$version" >> $env:GITHUB_ENV
+          echo "IS_PRERELEASE=$isPrerelease" >> $env:GITHUB_OUTPUT
 
       - name: Update project version
         shell: pwsh
@@ -120,7 +125,7 @@ jobs:
           tag_name: v${{ steps.version.outputs.VERSION }}
           release_name: Release v${{ steps.version.outputs.VERSION }}
           draft: false
-          prerelease: false
+          prerelease: ${{ steps.version.outputs.IS_PRERELEASE == 'True' }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
