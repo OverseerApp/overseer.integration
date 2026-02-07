@@ -1,36 +1,24 @@
 # Development Guide
 
-## Plugins — How to build one ✅
+## Building Plugins for Overseer
 
-This section describes how to create a plugin for Overseer. Currently there is one plugin *type* (the `IFailureDetectionAnalyzer`), but the plugin system is designed to be generic and expandable: the app discovers implementations of `IPluginConfiguration` and calls them to register plugin services and any dependencies they require.
+This workspace contains the core integration interfaces for building Overseer plugins. The plugin system is designed to be generic and expandable: the app discovers implementations of `IPluginConfiguration` and calls them to register plugin services and any dependencies they require.
 
-### Goals
+### Plugin Architecture
 
-- Keep plugin code isolated in a class library.
-- Your plugin should be in the Overseer namespace.
-  - This is so your assemblies are prefixed with "Overseer", E.g. "Overseer.Your.Plugin.Namespace.dll"
-- Implement `IPluginConfiguration` to configure and register your plugin's services.
-- Register your plugin's public plugin interfaces (for example, `IFailureDetectionAnalyzer`) and any supporting dependencies in `ConfigureServices`.
+All plugins follow a common pattern:
+
+1. **Implement a plugin interface** — Define the functionality your plugin provides (e.g., `IMachineProvider`, `IFailureDetectionAnalyzer`)
+2. **Implement `IPluginConfiguration`** — Register your plugin services and dependencies with the dependency injection container
+3. **Package as a class library** — Your plugin should be in the Overseer namespace so assemblies are prefixed with "Overseer"
 
 ---
 
-### Example: failure detection analyzer plugin 🔧
+## Implementing `IPluginConfiguration`
 
-This example shows the minimal pieces you typically need to provide.
+Every plugin must implement `IPluginConfiguration` to register its services with the host application.
 
-1) Implement the plugin interface(s):
-
-```csharp
-// MyAnalyzer.cs
-public class MyAnalyzer : IFailureDetectionAnalyzer
-{
-  public void Start(string url) { /* ... */ }
-  public void Stop() { /* ... */ }
-  public FailureDetectionAnalysisResult Analyze() { /* ... */ }
-}
-```
-
-2) Implement `IPluginConfiguration` to register the analyzer and any dependencies:
+### Basic Structure
 
 ```csharp
 // PluginConfiguration.cs
@@ -41,43 +29,60 @@ public class PluginConfiguration : IPluginConfiguration
 {
   public void ConfigureServices(IServiceCollection services)
   {
-    // Optionally register other dependencies required by your plugin
-    // services.AddSingleton<IMyDependency, MyDependencyImplementation>();
+    // Register your plugin implementation(s)
+    services.AddTransient<IPluginInterface, YourPluginImplementation>();
     
-    // Register the plugin implementation for the plugin interface
-    services.AddTransient<IFailureDetectionAnalyzer, MyAnalyzer>();    
+    // Optionally register dependencies required by your plugin
+    // services.AddSingleton<IMyDependency, MyDependencyImplementation>();
+    // services.AddHttpClient<IMyApiClient, MyApiClient>();
   }
 }
 ```
 
-> Note: The host will discover `IPluginConfiguration` implementations (for example via reflection) and invoke `ConfigureServices` when composing the application.
+> **Note:** The host will discover `IPluginConfiguration` implementations via reflection and invoke `ConfigureServices` when composing the application.
+
+### Service Lifetimes
+
+Choose the appropriate service lifetime for your registrations:
+
+- **`AddTransient`** — A new instance is created each time it's requested. Use for lightweight, stateless services.
+- **`AddScoped`** — A new instance is created per scope (typically per request). Use when you need request-specific state.
+- **`AddSingleton`** — A single instance is shared across the application lifetime. Use for stateless services or shared resources.
+
+### Best Practices
+
+- Keep plugin behavior focused: register only the public plugin interfaces and minimum dependencies needed
+- Prefer constructor-injected dependencies; register interfaces rather than concrete classes when appropriate
+- Make your plugin classes `public` so they can be discovered and instantiated by the host
+- Avoid side effects in `ConfigureServices`; keep service registrations deterministic
+- Register implementations against abstractions (interfaces) rather than concrete types
 
 ---
 
-### Best practices & tips 💡
+## Plugin Types
 
-- Keep plugin behaviour focused: try to register only the public plugin interfaces and the minimum dependencies needed.
-- Prefer constructor-injected dependencies; register interfaces rather than concrete classes when appropriate.
-- Make your plugin classes `public` so they can be discovered and instantiated by the host.
-- If your plugin needs configuration, use the host's existing configuration mechanisms (e.g., `IOptions<T>`) and document the configuration keys your plugin expects.
-- Avoid side effects in `ConfigureServices`; keep service registrations deterministic.
+Overseer supports multiple plugin types. See the specific guides for detailed implementation instructions:
 
----
+### [Failure Detection Analyzers](failure-detection-analyzer.md)
 
-### Future plugin types
+Implement `IFailureDetectionAnalyzer` to create plugins that monitor print jobs and detect failures in real-time.
 
-Design your `IPluginConfiguration` registrations to be generic — register implementations against abstractions (interfaces) rather than concrete types. This allows the host to support multiple plugin interfaces over time without requiring plugin authors to change their registration approach.
+### [Machine Providers](machine-provider-development.md)
+
+Implement `IMachineProvider<TMachine>` to add support for new machine types (3D printers, CNC machines, etc.).
 
 ---
 
-### Quick checklist before publishing a plugin 📋
+## Quick Checklist Before Publishing 📋
 
 - [ ] Project is a class library targeting a compatible framework
 - [ ] All plugin types are `public`
 - [ ] `IPluginConfiguration` implemented and registers services
 - [ ] Dependencies are registered and documented
-- [ ] Any required configuration keys are documented
+- [ ] Plugin is in the Overseer namespace
 
 ---
 
-If you need a reference implementation please view the [Overseer Print Guard](https://github.com/OverseerApp/overseer.print-guard) repository.
+## Reference Implementations
+
+For reference implementations, please view existing plugins on the [OverseerApp GitHub organization](https://github.com/OverseerApp).
