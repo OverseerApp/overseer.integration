@@ -9,3 +9,7 @@ Install the NuGet package:
 ```bash
 dotnet add package Overseer.Server.Integration
 ```
+
+## Development
+See [development.md](/docs/development.md) to learn more about creating plugins.
+

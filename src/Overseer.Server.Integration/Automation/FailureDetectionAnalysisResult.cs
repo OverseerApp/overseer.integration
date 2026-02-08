@@ -1,4 +1,3 @@
-
 namespace Overseer.Server.Integration.Automation;
 
 /// <summary>
