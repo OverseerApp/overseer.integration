@@ -5,18 +5,18 @@ namespace Overseer.Server.Integration.Automation;
 /// </summary>
 public interface IFailureDetectionAnalyzer
 {
-    /// <summary>
-    /// Starts capturing frames from the given URL for analysis.
-    /// </summary>
-    void Start(string url);
+  /// <summary>
+  /// Starts capturing frames from the given URL for analysis.
+  /// </summary>
+  void Start(string url);
 
-    /// <summary>
-    /// Stops the frame capturing process.
-    /// </summary>
-    void Stop();
+  /// <summary>
+  /// Stops the frame capturing process.
+  /// </summary>
+  void Stop();
 
-    /// <summary>
-    /// Analyzes the latest frame for failure detection.
-    /// </summary>
-    FailureDetectionAnalysisResult Analyze();
+  /// <summary>
+  /// Analyzes the latest frame for failure detection.
+  /// </summary>
+  FailureDetectionAnalysisResult Analyze();
 }

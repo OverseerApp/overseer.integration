@@ -21,8 +21,11 @@ This example shows the minimal pieces you typically need to provide.
 Create a derived machine class with properties that wrap the base `Properties` dictionary. Use the `MachinePropertyAttribute` to control how these properties are displayed in the UI:
 
 ```csharp
+// CustomMachine.cs
 public class CustomMachine : Machine
 {
+  public override string MachineType => "Custom";
+
   [MachineProperty(DisplayName = "API Key")]
   public string ApiKey
   {
@@ -56,11 +59,18 @@ Create a class that implements `IMachineProvider<TMachine>` where `TMachine` is 
 // CustomMachineProvider.cs
 using Overseer.Server.Integration.Machines;
 
-public class CustomMachineProvider : IMachineProvider<CustomMachine>
+public class CustomMachineProvider(Machine machine, ICustomApiClient customApiClient) : IMachineProvider<CustomMachine>
 {
+  private System.Timers.Timer _timer;
+
+  // This event handler is how status updates are sent to Overseer
   public event EventHandler<MachineStatusEventArgs> StatusUpdated;
 
+  // The name of the machine
   public string MachineType => "Custom";
+
+  // The
+  public CustomMachine Machine { get; set; } = machine;
 
   public Task PauseJob()
   {
@@ -82,8 +92,9 @@ public class CustomMachineProvider : IMachineProvider<CustomMachine>
 
   public Task Configure(Machine machine)
   {
-    // This gets called after creation or updates, but before the machine data is persisted.
-    // Use this method to define the tools that are supported by the machine
+    // This gets called after creation or updates to the machine by the user.
+    // Use this method to define/update the tools that are supported by the machine
+    Machine = machine;
     return Task.CompletedTask;
   }
 
@@ -97,26 +108,28 @@ public class CustomMachineProvider : IMachineProvider<CustomMachine>
     // If the provider supports real-time communication (WebSocket, MQTT, etc.), send updates as they arrive.
     // However, when the machine is idle and no updates are incoming, periodically emit an update
     // to prevent Overseer from marking the machine as offline.
-
-    var timer = new System.Timers.Timer(interval * 1000);
-    timer.Elapsed += async (sender, e) =>
+    _timer?.Dispose();
+    _timer = new System.Timers.Timer(interval * 1000);
+    _timer.Elapsed += async (sender, e) =>
     {
-      var status = await GetMachineStatusAsync();
+      var status = await customApiClient.GetMachineStatusAsync();
       StatusUpdated?.Invoke(this, new MachineStatusEventArgs(status));
     };
-    timer.Start();
+    _timer.Start();
   }
 
   public void Stop()
   {
     // Should stop monitoring and clean up any resources
+    _timer.Dispose();
+    _timer = null;
   }
 }
 ```
 
 ### 3) Implement `IPluginConfiguration` to register services
 
-Create a class that implements `IPluginConfiguration` to register your machine provider and any dependencies:
+Create a class that implements `IPluginConfiguration` to register your machine provider factory function:
 
 ```csharp
 // PluginConfiguration.cs
@@ -127,17 +140,24 @@ public class PluginConfiguration : IPluginConfiguration
 {
   public void ConfigureServices(IServiceCollection services)
   {
-    // Optionally register other dependencies required by your provider
-    // services.AddSingleton<IHttpClientFactory>();
-    // services.AddSingleton<IPrusaApiClient, PrusaApiClient>();
 
-    // Register the machine provider
-    services.AddTransient<IMachineProvider<CustomMachine>, CustomMachineProvider>();
+    // register any dependencies for your provider
+    services.AddTransient<ICustomApiClient, CustomApiClient>();
+
+    // configure the factory function for your provider as a singleton
+    services.AddSingleton<MachineProviderFactory<CustomMachine, CustomMachineProvider>>(
+      (serviceProvider) =>
+      {
+        return machine => ActivatorUtilities.CreateInstance<CustomMachineProvider>(serviceProvider, machine);
+      }
+    );
   }
 }
 ```
 
-> Note: The host will discover `IPluginConfiguration` implementations (for example via reflection) and invoke `ConfigureServices` when composing the application.
+> **Factory Function Requirement:** The provider registration must use a factory function to inject the machine instance at runtime. This allows Overseer to create provider instances with the appropriate machine context when needed.
+
+> Note: A user can have multiple machines of the same type, so design your provider to efficiently support multiple provider instances.
 
 ---
 
