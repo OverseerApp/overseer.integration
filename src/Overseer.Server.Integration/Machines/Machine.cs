@@ -28,14 +28,14 @@ public class Machine
   /// <summary>
   /// The URL of the machine's webcam stream, if available. This can be used by the client to display a live feed from the machine's webcam.
   /// </summary>
-  public string? WebcamUrl { get; set; }
+  public virtual string? WebcamUrl { get; set; }
 
   /// <summary>
   /// The orientation of the machine's webcam, if available. This can be used by the client to correctly orient the webcam feed when displaying it.
   /// If not specified, the client should assume a default orientation.
   /// </summary>
   [JsonConverter(typeof(JsonStringEnumConverter))]
-  public MachineWebcamOrientation? WebcamOrientation { get; set; }
+  public virtual MachineWebcamOrientation? WebcamOrientation { get; set; }
 
   /// <summary>
   /// The tools available on the machine, Currently supports "Heater" and "Extruder" tool types.
@@ -52,5 +52,19 @@ public class Machine
   /// the other properties. The contents of this dictionary are up to the provider and client to define and interpret, but it can be used to store
   /// things website url, ip address, passwords, or any other relevant information.
   /// </summary>
-  public Dictionary<string, object> Properties { get; set; } = [];
+  public virtual Dictionary<string, object> Properties { get; set; } = [];
+
+  public void SetProperty(string key, object value)
+  {
+    Properties[key] = value;
+  }
+
+  public T? GetProperty<T>(string key)
+  {
+    if (Properties.TryGetValue(key, out var value) && value is T typedValue)
+    {
+      return typedValue;
+    }
+    return default;
+  }
 }
