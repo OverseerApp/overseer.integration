@@ -11,5 +11,5 @@ dotnet add package Overseer.Server.Integration
 ```
 
 ## Development
-See [development.md](development.md) to learn more about creating plugins.
+See [development.md](/docs/development.md) to learn more about creating plugins.
 

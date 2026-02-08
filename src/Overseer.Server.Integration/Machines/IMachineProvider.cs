@@ -44,7 +44,7 @@ public interface IMachineProvider
     /// <summary>
     /// Called by the server to start the provider
     /// </summary>
-    /// <param name="interval"></param>
+    /// <param name="interval">The polling interval in milliseconds</param>
     void Start(int interval);
 
     /// <summary>

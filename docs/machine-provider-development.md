@@ -11,11 +11,12 @@ This guide describes how to create a machine provider plugin for Overseer. Machi
 - Implement `IPluginConfiguration` to register your machine provider and any dependencies.
 
 ---
+
 ## Creating a Machine Provider
 
 This example shows the minimal pieces you typically need to provide.
 
-### 1) Define machine properties 
+### 1) Define machine properties
 
 Create a derived machine class with properties that wrap the base `Properties` dictionary. Use the `MachinePropertyAttribute` to control how these properties are displayed in the UI:
 
@@ -23,31 +24,29 @@ Create a derived machine class with properties that wrap the base `Properties` d
 public class CustomMachine : Machine
 {
   [MachineProperty(DisplayName = "API Key")]
-  public string ApiKey 
-  { 
+  public string ApiKey
+  {
     get => Properties.GetValueOrDefault("ApiKey");
     set => Properties["ApiKey"] = value;
   }
-  
+
   [MachineProperty(DisplayName = "Hostname", DisplayType = MachinePropertyDisplayType.SetupOnly)]
-  public string Hostname 
-  { 
+  public string Hostname
+  {
     get => Properties.GetValueOrDefault("Hostname", out var value);
     set => Properties["Hostname"] = value;
   }
 
   [MachineProperty(IsIgnored = true)] // not show on client
   public string PersistedProperty
-  { 
+  {
     get => Properties.GetValueOrDefault("PersistedProperty", out var value);
     set => Properties["PersistedProperty"] = value;
   }
 }
 ```
 
-> **Important:** Custom properties should wrap the `Properties` dictionary from the base `Machine` class. This ensures that property values are properly persisted, retrieved, and displayed by the Overseer system. 
-
-
+> **Important:** Custom properties should wrap the `Properties` dictionary from the base `Machine` class. This ensures that property values are properly persisted, retrieved, and displayed by the Overseer system.
 
 ### 2) Implement the `IMachineProvider<TMachine>` interface
 
@@ -58,57 +57,57 @@ Create a class that implements `IMachineProvider<TMachine>` where `TMachine` is 
 using Overseer.Server.Integration.Machines;
 
 public class CustomMachineProvider : IMachineProvider<CustomMachine>
-{ 
+{
   public event EventHandler<MachineStatusEventArgs> StatusUpdated;
 
   public string MachineType => "Custom";
-  
+
   public Task PauseJob()
   {
     // Implement pause logic for Custom machines
     return Task.CompletedTask;
   }
-  
+
   public Task ResumeJob()
   {
     // Implement resume logic for Custom machines
     return Task.CompletedTask;
   }
-  
+
   public Task CancelJob()
   {
     // Implement cancel logic for Custom machines
     return Task.CompletedTask;
-  } 
+  }
 
   public Task Configure(Machine machine)
   {
-    // This gets called after creation or updates, but before the machine data is persisted. 
+    // This gets called after creation or updates, but before the machine data is persisted.
     // Use this method to define the tools that are supported by the machine
     return Task.CompletedTask;
   }
 
-  public void Start(int interval) 
+  public void Start(int interval)
   {
-    // Start monitoring the machine state. 
-    // 
-    // The interval parameter represents the polling rate in seconds. 
-    // If the provider polls for updates it should do it at this interval. 
-    // 
+    // Start monitoring the machine state.
+    //
+    // The interval parameter represents the polling rate in seconds.
+    // If the provider polls for updates it should do it at this interval.
+    //
     // If the provider supports real-time communication (WebSocket, MQTT, etc.), send updates as they arrive.
     // However, when the machine is idle and no updates are incoming, periodically emit an update
     // to prevent Overseer from marking the machine as offline.
- 
-    var timer = new System.Timers.Timer(interval);
-    timer.Elapsed += async (sender, e) => 
-    { 
+
+    var timer = new System.Timers.Timer(interval * 1000);
+    timer.Elapsed += async (sender, e) =>
+    {
       var status = await GetMachineStatusAsync();
       StatusUpdated?.Invoke(this, new MachineStatusEventArgs(status));
     };
-    timer.Start(); 
+    timer.Start();
   }
 
-  public void Stop() 
+  public void Stop()
   {
     // Should stop monitoring and clean up any resources
   }
@@ -131,7 +130,7 @@ public class PluginConfiguration : IPluginConfiguration
     // Optionally register other dependencies required by your provider
     // services.AddSingleton<IHttpClientFactory>();
     // services.AddSingleton<IPrusaApiClient, PrusaApiClient>();
-    
+
     // Register the machine provider
     services.AddTransient<IMachineProvider<CustomMachine>, CustomMachineProvider>();
   }
@@ -140,7 +139,7 @@ public class PluginConfiguration : IPluginConfiguration
 
 > Note: The host will discover `IPluginConfiguration` implementations (for example via reflection) and invoke `ConfigureServices` when composing the application.
 
---- 
+---
 
 ## Available Machine Features
 
@@ -165,23 +164,23 @@ Example with different property types:
 ```csharp
 public class CustomMachine : Machine
 {
-  [MachineProperty(DisplayName = "API Key", DisplayType = MachinePropertyDisplayType.Password)]
-  public string ApiKey 
-  { 
+  [MachineProperty(DisplayName = "API Key", DisplayType = MachinePropertyDisplayType.SetupOnly)]
+  public string ApiKey
+  {
     get => Properties.TryGetValue(nameof(ApiKey), out var value) ? value?.ToString() ?? string.Empty : string.Empty;
     set => Properties[nameof(ApiKey)] = value;
   }
-  
+
   [MachineProperty(DisplayName = "Port Number")]
-  public int Port 
-  { 
+  public int Port
+  {
     get => Properties.TryGetValue(nameof(Port), out var value) && int.TryParse(value?.ToString(), out var port) ? port : 8080;
     set => Properties[nameof(Port)] = value;
   }
-  
+
   [MachineProperty(DisplayName = "Enable SSL")]
-  public bool EnableSsl 
-  { 
+  public bool EnableSsl
+  {
     get => Properties.TryGetValue(nameof(EnableSsl), out var value) && bool.TryParse(value?.ToString(), out var enabled) && enabled;
     set => Properties[nameof(EnableSsl)] = value;
   }

@@ -30,7 +30,6 @@ public class MachineStatus
     /// <summary>
     /// The estimated time remaining for a job
     /// </summary>
-    /// <remarks>
     public int EstimatedTimeRemaining { get; set; }
 
     /// <summary>
@@ -48,12 +47,23 @@ public class MachineStatus
         if (obj is not MachineStatus other)
             return false;
 
+        if (Temperatures.Count != other.Temperatures.Count)
+            return false;
+
+        foreach (var kvp in Temperatures)
+        {
+            if (!other.Temperatures.TryGetValue(kvp.Key, out var otherTemp))
+                return false;
+
+            if (!Equals(kvp.Value, otherTemp))
+                return false;
+        }
+
         return MachineId == other.MachineId
             && State == other.State
             && ElapsedJobTime == other.ElapsedJobTime
             && EstimatedTimeRemaining == other.EstimatedTimeRemaining
-            && Progress.Equals(other.Progress)
-            && Temperatures.SequenceEqual(other.Temperatures);
+            && Progress.Equals(other.Progress);
     }
 
     public override int GetHashCode()
@@ -61,14 +71,14 @@ public class MachineStatus
         unchecked
         {
             int hash = 17;
-            hash = hash * 23 + MachineId.GetHashCode();
+            hash = hash * 23 + MachineId;
             hash = hash * 23 + State.GetHashCode();
-            hash = hash * 23 + ElapsedJobTime.GetHashCode();
-            hash = hash * 23 + EstimatedTimeRemaining.GetHashCode();
+            hash = hash * 23 + ElapsedJobTime;
+            hash = hash * 23 + EstimatedTimeRemaining;
             hash = hash * 23 + Progress.GetHashCode();
-            foreach (var kvp in Temperatures)
+            foreach (var kvp in Temperatures.OrderBy(x => x.Key))
             {
-                hash = hash * 23 + kvp.Key.GetHashCode();
+                hash = hash * 23 + kvp.Key;
                 hash = hash * 23 + (kvp.Value?.GetHashCode() ?? 0);
             }
             return hash;
