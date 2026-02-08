@@ -109,7 +109,7 @@ public class CustomMachineProvider(Machine machine, ICustomApiClient customApiCl
     // However, when the machine is idle and no updates are incoming, periodically emit an update
     // to prevent Overseer from marking the machine as offline.
     _timer?.Dispose();
-    _timer = new System.Timers.Timer(interval * 1000);
+    _timer = new System.Timers.Timer(interval);
     _timer.Elapsed += async (sender, e) =>
     {
       var status = await customApiClient.GetMachineStatusAsync();

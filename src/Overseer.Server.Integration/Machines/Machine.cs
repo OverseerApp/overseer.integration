@@ -54,8 +54,14 @@ public class Machine
   /// </summary>
   public virtual Dictionary<string, object> Properties { get; set; } = [];
 
-  public void SetProperty(string key, object value)
+  public void SetProperty(string key, object? value)
   {
+    if (value == null)
+    {
+      Properties.Remove(key);
+      return;
+    }
+
     Properties[key] = value;
   }
 

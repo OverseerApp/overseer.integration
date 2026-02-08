@@ -3,8 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Overseer.Server.Integration;
 
 /// <summary>
-/// Optional interface for plugin configuration.
-/// Implement this interface in your plugin to configure services.
+/// Implement this interface in your plugin to configure services and register you plugin with Overseer.
 /// </summary>
 public interface IPluginConfiguration
 {
