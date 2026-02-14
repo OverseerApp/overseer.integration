@@ -22,10 +22,9 @@ Create a derived machine class with properties that wrap the base `Properties` d
 
 ```csharp
 // CustomMachine.cs
+[MachineType("Custom")]
 public class CustomMachine : Machine
 {
-  public override string MachineType => "Custom";
-
   [MachineProperty(DisplayName = "API Key")]
   public string ApiKey
   {
@@ -66,7 +65,7 @@ public class CustomMachineProvider(Machine machine, ICustomApiClient customApiCl
   // This event handler is how status updates are sent to Overseer
   public event EventHandler<MachineStatusEventArgs> StatusUpdated;
 
-  // The name of the machine
+  // The name of the machine type
   public string MachineType => "Custom";
 
   // The

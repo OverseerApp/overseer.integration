@@ -10,12 +10,6 @@ public class Machine
   public int Id { get; set; }
 
   /// <summary>
-  /// The type of the machine, used to determine which provider should be used to load the machine. This should be a string that uniquely
-  /// identifies the type of machine, such as "Prusa", "OctoPrint", "Bambu", etc.
-  /// </summary>
-  public virtual string MachineType { get; } = string.Empty;
-
-  /// <summary>
   /// The user assigned name of the machine
   /// </summary>
   public string? Name { get; set; }
