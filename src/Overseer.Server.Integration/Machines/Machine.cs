@@ -2,11 +2,11 @@ using System.Text.Json.Serialization;
 
 namespace Overseer.Server.Integration.Machines;
 
-public class Machine
+public record Machine
 {
   /// <summary>
-  /// The type of the machine, used to match machines, metadata, and providers. Overseer will set this property based on the
-  /// name value provided by the MachineTypeAttribute.
+  /// The type of the machine, used to match machines, metadata, and providers.
+  /// Overseer will set this property based on the name value provided by the MachineTypeAttribute.
   /// </summary>
   public string? MachineType { get; set; }
 

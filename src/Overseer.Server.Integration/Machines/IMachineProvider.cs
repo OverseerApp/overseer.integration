@@ -1,25 +1,20 @@
-using System;
-
 namespace Overseer.Server.Integration.Machines;
 
 /// <summary>
-/// Interface for machine providers, which are responsible for managing the state and operations of machines in the system.
-/// This interface should not be implemented directly, instead implement the generic IMachineProvider<TMachine> interface to provide a strongly
-/// typed machine instance.
+/// The IMachineProvider interface is responsible for managing the status and operations of a machine.
+/// It provides methods to pause, resume, and cancel jobs on the machine, as well as an event that is raised
+/// whenever the status of the machine is updated. The Start method is called by the server to start the provider,
+/// and it can be used to maintain any state related to the machine. The Stop method is called by the server to stop the provider.
+///
+/// Instances of the IMachineProvider are expected to be long-lived and can maintain state across multiple calls to Start and Stop.
 /// </summary>
-public interface IMachineProvider
+public interface IMachineProvider<TMachine>
+  where TMachine : Machine, new()
 {
   /// <summary>
   /// Event that is raised whenever the status of the machine is updated. The event args will contain the new status of the machine.
   /// </summary>
   event EventHandler<MachineStatusEventArgs>? StatusUpdated;
-
-  /// <summary>
-  /// The name of the machine type that this provider supports.
-  /// This should be a string that uniquely identifies the type of machine, such as "Prusa", "OctoPrint", "Bambu", etc.,
-  /// and should match the MachineType property of the Machine instances that this provider is responsible for.
-  /// </summary>
-  string MachineType { get; }
 
   /// <summary>
   /// Pauses the current job on the machine.
@@ -37,32 +32,17 @@ public interface IMachineProvider
   Task CancelJob();
 
   /// <summary>
-  /// This method is called when the user creates or updates a machine and is responsible for configuring the tools for the machine.
-  /// </summary>
-  Task Configure(Machine machine);
-
-  /// <summary>
   /// Called by the server to start the provider
+  ///
+  /// The instance create to monitoring the machine will be long lived and can be used to maintain any state related to the machine,
+  /// such as the current job status, tool information, etc. This instance will be passed to the provider on each call to Start,
+  /// so it can be used to maintain state across multiple calls to Start and Stop.
   /// </summary>
   /// <param name="interval">The polling interval in milliseconds</param>
-  void Start(int interval);
+  void Start(int interval, TMachine machine);
 
   /// <summary>
   /// Called by the server to stop the provider.
   /// </summary>
   void Stop();
-}
-
-/// <summary>
-/// Generic version of the IMachineProvider interface, which provides a strongly typed Machine instance for the provider to manage.
-/// </summary>
-/// <typeparam name="TMachine"></typeparam>
-public interface IMachineProvider<out TMachine> : IMachineProvider
-  where TMachine : Machine, new()
-{
-  /// <summary>
-  /// The machine instance that this provider is responsible for managing. This should be a strongly typed instance
-  /// of the machine that this provider supports.
-  /// </summary>
-  TMachine Machine { get; }
 }

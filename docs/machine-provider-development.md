@@ -25,32 +25,61 @@ Create a derived machine class with properties that wrap the base `Properties` d
 [MachineType("Custom")]
 public class CustomMachine : Machine
 {
-  [MachineProperty(DisplayName = "API Key")]
+  [MachineProperty(displayName: "API Key", isSensitive: true, isRequired: true)]
   public string ApiKey
   {
     get => Properties.GetValueOrDefault("ApiKey");
     set => Properties["ApiKey"] = value;
   }
 
-  [MachineProperty(DisplayName = "Hostname", DisplayType = MachinePropertyDisplayType.SetupOnly)]
+  /// This property is collected when adding the printer to Overseer, but now on the machine edit screen.
+  /// Available options are "Both", "SetupOnly", and "UpdateOnly"
+  [MachineProperty(displayName: "Hostname", displayType: MachinePropertyDisplayType.SetupOnly)]
   public string Hostname
   {
-    get => Properties.GetValueOrDefault("Hostname", out var value);
-    set => Properties["Hostname"] = value;
+    get => GetProperty(nameof(Hostname));
+    set => SetProperty(nameof(Hostname));
   }
 
-  [MachineProperty(IsIgnored = true)] // not show on client
+  /// This property is persisted with the machine, but won't be displayed to the user
+  [MachineProperty(isIgnored: true)]
   public string PersistedProperty
   {
-    get => Properties.GetValueOrDefault("PersistedProperty", out var value);
-    set => Properties["PersistedProperty"] = value;
+    get => GetProperty(nameof(PersistedProperty));
+    set => SetProperty(nameof(PersistedProperty));
   }
 }
 ```
 
-> **Important:** Custom properties should wrap the `Properties` dictionary from the base `Machine` class. This ensures that property values are properly persisted, retrieved, and displayed by the Overseer system.
+> **Important:** Custom properties should wrap the `Properties` dictionary from the base `Machine` class. This ensures that property values are properly persisted, retrieved, and displayed by the Overseer system. The `Machine` class contains methods to help with managing the property wrappers.
+> However, it's perfectly acceptable to interact with the `Properties` dictionary directly as well.
 
-### 2) Implement the `IMachineProvider<TMachine>` interface
+### 2) Implement the `IMachineConfigurationProvider<TMachine>` interface
+
+Create a class that implements `IMachineConfigurationProvider<TMachine>` where `TMachine` is a strongly-typed machine class derived from or compatible with the `Machine` type:
+
+```csharp
+using Overseer.Server.Integration.Machines;
+
+public class CustomMachineConfigurationProvider(ICustomApiClient customApiClient) : IMachineConfigurationProvider<CustomMachine>
+{
+  async Task<CustomMachine> Configure(Machine machine) {
+    var machineInfo = await customApiClient.GetMachineInfo();
+
+    return new CustomMachine {
+      // if creating a new instance make sure to provide the providers that will be set by Overseer
+      Name = machine.Name,
+      MachineType = machine.MachineType,
+      Disabled = machine.Disabled,
+      SortIndex = machine.SortIndex,
+      Properties = machine.Properties,
+      //...set tools, webcam, etc.
+    }
+  }
+}
+```
+
+### 3) Implement the `IMachineProvider<TMachine>` interface
 
 Create a class that implements `IMachineProvider<TMachine>` where `TMachine` is a strongly-typed machine class derived from or compatible with the `Machine` type:
 
@@ -58,47 +87,35 @@ Create a class that implements `IMachineProvider<TMachine>` where `TMachine` is 
 // CustomMachineProvider.cs
 using Overseer.Server.Integration.Machines;
 
-public class CustomMachineProvider(Machine machine, ICustomApiClient customApiClient) : IMachineProvider<CustomMachine>
+public class CustomMachineProvider(ICustomApiClient customApiClient) : IMachineProvider<CustomMachine>
 {
   private System.Timers.Timer _timer;
 
   // This event handler is how status updates are sent to Overseer
   public event EventHandler<MachineStatusEventArgs> StatusUpdated;
 
-  // The name of the machine type
-  public string MachineType => "Custom";
-
-  // The
-  public CustomMachine Machine { get; set; } = machine;
+  private CustomMachine Machine { get; set; }
 
   public Task PauseJob()
   {
-    // Implement pause logic for Custom machines
-    return Task.CompletedTask;
+    return customApiClient.Pause();
   }
 
   public Task ResumeJob()
   {
-    // Implement resume logic for Custom machines
-    return Task.CompletedTask;
+    return customApiClient.Resume();
   }
 
   public Task CancelJob()
   {
-    // Implement cancel logic for Custom machines
-    return Task.CompletedTask;
+    return customApiClient.Cancel();
   }
 
-  public Task Configure(Machine machine)
+  public void Start(int interval, CustomMachine machine)
   {
-    // This gets called after creation or updates to the machine by the user.
-    // Use this method to define/update the tools that are supported by the machine
+    // It's recommended to capture the machine instance
     Machine = machine;
-    return Task.CompletedTask;
-  }
 
-  public void Start(int interval)
-  {
     // Start monitoring the machine state.
     //
     // The interval parameter represents the polling rate in seconds.
@@ -126,7 +143,7 @@ public class CustomMachineProvider(Machine machine, ICustomApiClient customApiCl
 }
 ```
 
-### 3) Implement `IPluginConfiguration` to register services
+### 4) Implement `IPluginConfiguration` to register services
 
 Create a class that implements `IPluginConfiguration` to register your machine provider factory function:
 
@@ -135,26 +152,23 @@ Create a class that implements `IPluginConfiguration` to register your machine p
 using Microsoft.Extensions.DependencyInjection;
 using Overseer.Server.Integration;
 
-public class PluginConfiguration : IPluginConfiguration
+public class CustomMachinePluginConfiguration : IPluginConfiguration
 {
   public void ConfigureServices(IServiceCollection services)
   {
-
     // register any dependencies for your provider
     services.AddTransient<ICustomApiClient, CustomApiClient>();
 
-    // configure the factory function for your provider as a singleton
-    services.AddSingleton<MachineProviderFactory<CustomMachine, CustomMachineProvider>>(
-      (serviceProvider) =>
-      {
-        return machine => ActivatorUtilities.CreateInstance<CustomMachineProvider>(serviceProvider, machine);
-      }
-    );
+    // This is a short lived service and is only used for creating and updating machine through the UI
+    services.AddTransient<IMachineConfigurationProvider<CustomMachine>, CustomMachineConfigurationProvider>();
+
+    // This is a longed lived service and is used for receiving statuses from and sending commands to the machine
+    // DI will be used to create the instance so any dependencies are provided
+    // but Overseer will hold on to an instance of this as long as there is an enabled machine configured for the provider
+    services.AddTransient<IMachineProvider<CustomMachine>, CustomMachineProvider>();
   }
 }
 ```
-
-> **Factory Function Requirement:** The provider registration must use a factory function to inject the machine instance at runtime. This allows Overseer to create provider instances with the appropriate machine context when needed.
 
 > Note: A user can have multiple machines of the same type, so design your provider to efficiently support multiple provider instances.
 
