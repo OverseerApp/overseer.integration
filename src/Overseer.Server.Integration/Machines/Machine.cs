@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace Overseer.Server.Integration.Machines;
@@ -67,9 +68,22 @@ public record Machine
 
   public T? GetProperty<T>(string key)
   {
-    if (Properties.TryGetValue(key, out var value) && value is T typedValue)
+    if (Properties.TryGetValue(key, out var value))
     {
-      return typedValue;
+      if (value is T typedValue)
+      {
+        return typedValue;
+      }
+
+      if (value is JsonElement jsonElement)
+      {
+        var deserialized = jsonElement.Deserialize<T>();
+        if (deserialized is not null)
+        {
+          Properties[key] = deserialized;
+        }
+        return deserialized;
+      }
     }
     return default;
   }

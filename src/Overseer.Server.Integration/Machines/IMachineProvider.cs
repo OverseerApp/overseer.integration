@@ -47,8 +47,5 @@ public interface IMachineProvider
 ///
 /// Instances of the IMachineProvider are expected to be long-lived and can maintain state across multiple calls to Start and Stop.
 /// </summary>
-public interface IMachineProvider<TMachine>
-  where TMachine : Machine, new()
-{
-  void Start(int interval, TMachine machine);
-}
+public interface IMachineProvider<TMachine> : IMachineProvider
+  where TMachine : Machine, new() { }
