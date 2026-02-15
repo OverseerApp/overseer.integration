@@ -20,30 +20,3 @@ public interface IMachineConfigurationProvider<TMachine>
   /// </summary>
   Task<TMachine> Configure(Machine machine);
 }
-
-public record TestMachine : Machine
-{
-  public string TestProperty { get; set; } = string.Empty;
-}
-
-public class TestMachineConfigurationProvider : IMachineConfigurationProvider<TestMachine>
-{
-  public Task<TestMachine> Configure(Machine machine)
-  {
-    var testMachine = new TestMachine
-    {
-      Id = machine.Id,
-      Name = machine.Name,
-      MachineType = machine.MachineType,
-      Disabled = machine.Disabled,
-      WebcamUrl = machine.WebcamUrl,
-      WebcamOrientation = machine.WebcamOrientation,
-      Tools = machine.Tools,
-      SortIndex = machine.SortIndex,
-      Properties = machine.Properties,
-      TestProperty = "This is a test property",
-    };
-
-    return Task.FromResult(testMachine);
-  }
-}

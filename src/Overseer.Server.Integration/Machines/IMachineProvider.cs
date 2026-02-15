@@ -1,15 +1,6 @@
 namespace Overseer.Server.Integration.Machines;
 
-/// <summary>
-/// The IMachineProvider interface is responsible for managing the status and operations of a machine.
-/// It provides methods to pause, resume, and cancel jobs on the machine, as well as an event that is raised
-/// whenever the status of the machine is updated. The Start method is called by the server to start the provider,
-/// and it can be used to maintain any state related to the machine. The Stop method is called by the server to stop the provider.
-///
-/// Instances of the IMachineProvider are expected to be long-lived and can maintain state across multiple calls to Start and Stop.
-/// </summary>
-public interface IMachineProvider<TMachine>
-  where TMachine : Machine, new()
+public interface IMachineProvider
 {
   /// <summary>
   /// Event that is raised whenever the status of the machine is updated. The event args will contain the new status of the machine.
@@ -39,10 +30,25 @@ public interface IMachineProvider<TMachine>
   /// so it can be used to maintain state across multiple calls to Start and Stop.
   /// </summary>
   /// <param name="interval">The polling interval in milliseconds</param>
-  void Start(int interval, TMachine machine);
+  void Start<TMachine>(int interval, TMachine machine)
+    where TMachine : Machine, new();
 
   /// <summary>
   /// Called by the server to stop the provider.
   /// </summary>
   void Stop();
+}
+
+/// <summary>
+/// The IMachineProvider interface is responsible for managing the status and operations of a machine.
+/// It provides methods to pause, resume, and cancel jobs on the machine, as well as an event that is raised
+/// whenever the status of the machine is updated. The Start method is called by the server to start the provider,
+/// and it can be used to maintain any state related to the machine. The Stop method is called by the server to stop the provider.
+///
+/// Instances of the IMachineProvider are expected to be long-lived and can maintain state across multiple calls to Start and Stop.
+/// </summary>
+public interface IMachineProvider<TMachine>
+  where TMachine : Machine, new()
+{
+  void Start(int interval, TMachine machine);
 }
